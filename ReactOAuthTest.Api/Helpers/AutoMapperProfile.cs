@@ -8,7 +8,10 @@ namespace ReactOAuthTest.Api.Helpers
     {
         public AutoMapperProfile()
         {
-            CreateMap<User, UserDto>().ReverseMap();
+            CreateMap<AccountRegisterDto, User>()
+                .ForMember(dst => dst.UserName, opts => opts.MapFrom(src => src.Email));
+            CreateMap<AccountLoginDto, User>()
+                .ForMember(dst => dst.UserName, opts => opts.MapFrom(src => src.Email));
         }
     }
 }

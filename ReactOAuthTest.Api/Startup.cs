@@ -1,16 +1,18 @@
-﻿using System.Text;
+﻿using System;
+using System.Text;
 using AutoMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using ReactOAuthTest.Api.Helpers;
-using ReactOAuthTest.Api.Services;
 using ReactOAuthTest.Data;
+using ReactOAuthTest.Data.Entities;
 
 namespace ReactOAuthTest.Api
 {
@@ -30,11 +32,9 @@ namespace ReactOAuthTest.Api
 
             services.AddDbContext<SecurityContext>(x => x.UseInMemoryDatabase("SecurityDb"));
 
-            services.AddMvcCore()
-                .AddApiExplorer()
-                .AddAuthorization()
-                .AddDataAnnotations()
-                .AddJsonFormatters();
+            services.AddIdentity<User, IdentityRole>()
+                .AddEntityFrameworkStores<SecurityContext>()
+                .AddDefaultTokenProviders();
 
             services.AddAutoMapper();
 
@@ -42,10 +42,11 @@ namespace ReactOAuthTest.Api
             services.Configure<AppSettings>(appSettingsSection);
 
             var appSettings = appSettingsSection.Get<AppSettings>();
-            var key = Encoding.ASCII.GetBytes(appSettings.Secret);
+            var key = Encoding.ASCII.GetBytes(appSettings.JwtKey);
             services.AddAuthentication(opts =>
                 {
                     opts.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    opts.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                     opts.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
                 })
                 .AddJwtBearer(opts =>
@@ -54,18 +55,23 @@ namespace ReactOAuthTest.Api
                     opts.SaveToken = true;
                     opts.TokenValidationParameters = new TokenValidationParameters
                     {
-                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = appSettings.JwtIssuer,
+                        ValidAudience = appSettings.JwtIssuer,
                         IssuerSigningKey = new SymmetricSecurityKey(key),
-                        ValidateIssuer = false,
-                        ValidateAudience = false
+                        ClockSkew = TimeSpan.Zero
                     };
                 });
 
-            services.AddScoped<IUserService, UserService>();
+            services.AddMvcCore()
+                .AddApiExplorer()
+                .AddAuthorization()
+                .AddDataAnnotations()
+                .AddJsonFormatters();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory,
+            SecurityContext securityContext)
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
 
@@ -82,8 +88,10 @@ namespace ReactOAuthTest.Api
                 .AllowCredentials());
 
             app.UseAuthentication();
-            
+
             app.UseMvc();
+
+            securityContext.Database.EnsureCreated();
         }
     }
 }
