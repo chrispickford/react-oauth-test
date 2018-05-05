@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Linq;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using ReactOAuthTest.Data;
 using ReactOAuthTest.Data.Entities;
 
 namespace ReactOAuthTest.Api.Helpers
