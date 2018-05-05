@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -67,11 +68,13 @@ namespace ReactOAuthTest.Api
                 .AddAuthorization()
                 .AddDataAnnotations()
                 .AddJsonFormatters();
+
+            services.AddTransient<SecurityContextSeedData>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory,
-            SecurityContext securityContext)
+            SecurityContext securityContext, SecurityContextSeedData seeder)
         {
             loggerFactory.AddConsole(Configuration.GetSection("Logging"));
 
@@ -92,6 +95,8 @@ namespace ReactOAuthTest.Api
             app.UseMvc();
 
             securityContext.Database.EnsureCreated();
+
+            seeder.SeedUser();
         }
     }
 }
