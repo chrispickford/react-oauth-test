@@ -30,12 +30,11 @@ namespace ReactOAuthTest.Api
 
             services.AddDbContext<SecurityContext>(x => x.UseInMemoryDatabase("SecurityDb"));
 
-            //services.AddMvcCore()
-            //    .AddApiExplorer()
-            //    .AddAuthorization()
-            //    .AddDataAnnotations()
-            //    .AddJsonFormatters();
-            services.AddMvc();
+            services.AddMvcCore()
+                .AddApiExplorer()
+                .AddAuthorization()
+                .AddDataAnnotations()
+                .AddJsonFormatters();
 
             services.AddAutoMapper();
 
