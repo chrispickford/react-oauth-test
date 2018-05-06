@@ -1,17 +1,19 @@
 {
+  "awesomeTypescriptLoaderOptions": {
+    "useBabel": true
+  },
+  "compileOnSave": false,
   "compilerOptions": {
     "outDir": "./wwwroot/",
     "sourceMap": true,
     "noImplicitAny": true,
     "target": "es5",
     "jsx": "react",
-    "lib": ["es5", "es6", "dom"]
+    "module": "commonjs",
+    "lib": [ "es5", "es6", "dom" ]
   },
   "exclude": [
     "node_modules",
     "wwwroot"
-  ],
-  "awesomeTypescriptLoaderOptions": {
-    "useBabel": true
-  }
+  ]
 }
