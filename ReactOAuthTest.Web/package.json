@@ -5,8 +5,8 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "build-dev": "./node_modules/webpack/bin/webpack --mode development",
-    "build-prod": "./node_modules/webpack/bin/webpack --mode production",
+    "build-dev": "node ./node_modules/webpack/bin/webpack --mode development",
+    "build-prod": "node ./node_modules/webpack/bin/webpack --mode production",
     "watch": "yarn build-dev --watch"
   },
   "dependencies": {
