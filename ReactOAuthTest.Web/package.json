@@ -1,0 +1,39 @@
+{
+  "name": "react-oauth-test-web",
+  "version": "0.1.0",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build-dev": "webpack --mode development",
+    "build-prod": "webpack --mode production",
+    "watch": "yarn build-dev --watch"
+  },
+  "dependencies": {
+    "react": "^16.3.2",
+    "react-dom": "^16.3.2",
+    "webpack": "^4.7.0"
+  },
+  "devDependencies": {
+    "@types/react": "^16.3.13",
+    "@types/react-dom": "^16.0.5",
+    "@types/webpack": "^4.1.4",
+    "@types/webpack-env": "^1.13.6",
+    "awesome-typescript-loader": "^5.0.0",
+    "babel-core": "^6.26.3",
+    "babel-loader": "^7.1.4",
+    "babel-polyfill": "^6.26.0",
+    "babel-preset-env": "^1.6.1",
+    "babel-preset-react": "^6.24.1",
+    "clean-webpack-plugin": "^0.1.19",
+    "css-loader": "^0.28.11",
+    "html-webpack-plugin": "^3.2.0",
+    "mini-css-extract-plugin": "^0.4.0",
+    "node-sass": "^4.9.0",
+    "sass-loader": "^7.0.1",
+    "style-loader": "^0.21.0",
+    "typescript": "^2.8.3",
+    "uglifyjs-webpack-plugin": "^1.2.5",
+    "webpack-cli": "^2.1.2"
+  }
+}
