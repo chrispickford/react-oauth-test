@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,10 +7,12 @@ using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using ReactOAuthTest.Api.Dto;
 using ReactOAuthTest.Api.Helpers;
+using ReactOAuthTest.Data;
 using ReactOAuthTest.Data.Entities;
 
 namespace ReactOAuthTest.Api.Controllers
@@ -22,17 +23,32 @@ namespace ReactOAuthTest.Api.Controllers
     public class AccountController : Controller
     {
         private readonly AppSettings _appSettings;
+        private readonly SecurityContext _context;
         private readonly IMapper _mapper;
         private readonly SignInManager<User> _signInManager;
         private readonly UserManager<User> _userManager;
 
         public AccountController(UserManager<User> userManager, SignInManager<User> signInManager, IMapper mapper,
-            IOptions<AppSettings> appSettings)
+            IOptions<AppSettings> appSettings, SecurityContext context)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _mapper = mapper;
+            _context = context;
             _appSettings = appSettings.Value;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetUserDetails()
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            return Ok(new AccountUserDetailsDto
+            {
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email
+            });
         }
 
         [AllowAnonymous]
@@ -45,14 +61,42 @@ namespace ReactOAuthTest.Api.Controllers
             if (!signInResult.Succeeded)
                 return Unauthorized();
 
-            var user = _userManager.Users.Single(x => x.Email == loginDto.Email);
+            var user = await _userManager.Users.SingleAsync(x => x.Email == loginDto.Email);
 
-            return Ok(new
+            var accessToken = GenerateJwtToken(user.Id, user.Email);
+            var refreshToken = await GenerateRefreshToken(user.Id);
+
+            return Ok(new AccountTokenDto
             {
-                user.Email,
-                user.FirstName,
-                user.LastName,
-                Token = GenerateJwtToken(user.Id, user.Email)
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token
+            });
+        }
+
+        [AllowAnonymous]
+        [HttpPost("refresh")]
+        public async Task<IActionResult> Refresh(string refreshToken)
+        {
+            if (string.IsNullOrWhiteSpace(refreshToken)) return BadRequest();
+
+            var token = await _context.RefreshTokens.Include(x => x.User)
+                .SingleOrDefaultAsync(x => x.Token == refreshToken && x.ExpiresUtc > DateTime.Now);
+
+            if (token == null) return BadRequest();
+
+            var user = token.User;
+
+            if (!await _signInManager.CanSignInAsync(user)) return Unauthorized();
+
+            if (await _userManager.IsLockedOutAsync(user)) return Unauthorized();
+
+            var newAccessToken = GenerateJwtToken(user.Id, user.Email);
+            var newRefreshToken = await GenerateRefreshToken(user.Id);
+
+            return Ok(new AccountTokenDto
+            {
+                AccessToken = newAccessToken,
+                RefreshToken = newRefreshToken.Token
             });
         }
 
@@ -69,12 +113,13 @@ namespace ReactOAuthTest.Api.Controllers
 
             await _signInManager.SignInAsync(user, false);
 
-            return Ok(new
+            var accessToken = GenerateJwtToken(user.Id, user.Email);
+            var refreshToken = await GenerateRefreshToken(user.Id);
+
+            return Ok(new AccountTokenDto
             {
-                user.Email,
-                user.FirstName,
-                user.LastName,
-                Token = GenerateJwtToken(user.Id, user.Email)
+                AccessToken = accessToken,
+                RefreshToken = refreshToken.Token
             });
         }
 
@@ -89,53 +134,32 @@ namespace ReactOAuthTest.Api.Controllers
                     new Claim(JwtRegisteredClaimNames.NameId, userId),
                     new Claim(JwtRegisteredClaimNames.Sub, email)
                 }),
-                Expires = DateTime.UtcNow.AddMinutes(_appSettings.JwtExpireMins), // TODO: Expire after inactivity - refresh token?
+                Expires =
+                    DateTime.UtcNow.AddMinutes(_appSettings
+                        .JwtExpireMins), // TODO: Expire after inactivity - refresh token?
                 SigningCredentials =
-                    new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                    new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+                Audience = _appSettings.JwtAudience,
+                Issuer = _appSettings.JwtIssuer
             };
             var token = tokenHandler.CreateToken(tokenDescriptor);
 
             return tokenHandler.WriteToken(token);
         }
 
-        //[HttpGet]
-        //public IActionResult GetAll()
-        //{
-        //    var users = _userService.GetAll();
-        //    var userDtos = _mapper.Map<IList<UserDto>>(users);
-        //    return Ok(userDtos);
-        //}
+        private async Task<RefreshToken> GenerateRefreshToken(string userId)
+        {
+            var token = new RefreshToken
+            {
+                UserId = userId,
+                Token = Guid.NewGuid().ToString("N"),
+                IssuedUtc = DateTime.UtcNow,
+                ExpiresUtc = DateTime.Today.AddDays(1)
+            };
 
-        //[HttpGet("{id}")]
-        //public IActionResult GetById(int id)
-        //{
-        //    var user =  _userService.GetById(id);
-        //    var userDto = _mapper.Map<UserDto>(user);
-        //    return Ok(userDto);
-        //}
+            await _context.InsertOrUpdateRefreshToken(token);
 
-        //[HttpPut("{id}")]
-        //public IActionResult Update(int id, [FromBody] UserDto userDto)
-        //{
-        //    var user = _mapper.Map<User>(userDto);
-        //    user.Id = id;
-
-        //    try
-        //    {
-        //        _userService.Update(user, userDto.Password);
-        //        return Ok();
-        //    }
-        //    catch (ArgumentException ex)
-        //    {
-        //        return BadRequest(ex.Message);
-        //    }
-        //}
-
-        //[HttpDelete("{id}")]
-        //public IActionResult Delete(int id)
-        //{
-        //    _userService.Delete(id);
-        //    return Ok();
-        //}
+            return token;
+        }
     }
 }

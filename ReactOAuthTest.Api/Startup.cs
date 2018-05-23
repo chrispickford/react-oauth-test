@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Text;
-using System.Threading.Tasks;
 using AutoMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -25,6 +24,33 @@ namespace ReactOAuthTest.Api
         }
 
         public IConfiguration Configuration { get; }
+
+        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory,
+            SecurityContext securityContext, SecurityContextSeedData seeder)
+        {
+            loggerFactory.AddConsole(Configuration.GetSection("Logging"));
+
+            if (env.IsDevelopment())
+            {
+                loggerFactory.AddDebug();
+                app.UseDeveloperExceptionPage();
+            }
+
+            app.UseCors(policy => policy
+                .AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials());
+
+            app.UseAuthentication();
+
+            app.UseMvc();
+
+            securityContext.Database.EnsureCreated();
+
+            seeder.SeedUser();
+        }
 
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
@@ -70,33 +96,6 @@ namespace ReactOAuthTest.Api
                 .AddJsonFormatters();
 
             services.AddTransient<SecurityContextSeedData>();
-        }
-
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory,
-            SecurityContext securityContext, SecurityContextSeedData seeder)
-        {
-            loggerFactory.AddConsole(Configuration.GetSection("Logging"));
-
-            if (env.IsDevelopment())
-            {
-                loggerFactory.AddDebug();
-                app.UseDeveloperExceptionPage();
-            }
-
-            app.UseCors(policy => policy
-                .AllowAnyOrigin()
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials());
-
-            app.UseAuthentication();
-
-            app.UseMvc();
-
-            securityContext.Database.EnsureCreated();
-
-            seeder.SeedUser();
         }
     }
 }
